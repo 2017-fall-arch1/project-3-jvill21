@@ -36,7 +36,7 @@ AbRectOutline fieldOutline = {	/* playing field */
 
 Layer paddle1 = {		/**< layer for a paddle */
   (AbShape *)&rect10,
-  {screenWidth/2, screenHeight/8 - 5}, /**< bit below & right of center */
+  {screenWidth/2, screenHeight/8 - 7}, /**< bit below & right of center */
   {0,0}, {0,0},				    /* last & next pos */
   COLOR_VIOLET,
   0
@@ -53,7 +53,7 @@ Layer fieldLayer = {		/* playing field as a layer */
 
 Layer paddle2 = {		/**< Layer with a second paddle */
   (AbShape *)&rect10,
-  {screenWidth/2, screenHeight - 16}, /**< center */
+  {screenWidth/2, screenHeight - 14}, /**< center */
   {0,0}, {0,0},				    /* last & next pos */
   COLOR_RED,
   &fieldLayer,
@@ -186,14 +186,14 @@ void scoreCheck(MovLayer *ml, Region *fence) {      /* checks to see if a player
     }
 }
 
-void changeScore(char *i, int player) {     /* changes the score for each player */
-    if (player == 1) {
+/*void changeScore(char *i, int player) {     /* changes the score for each player */
+   /* if (player == 1) {
         i[0]++;
     }
     if (player == 2) {
         i[1]++;
     }
-}
+}*/
 
 void resetBall(MovLayer *ml) {      /* resests the board after a player scores */
     
