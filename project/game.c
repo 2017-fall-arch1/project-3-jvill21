@@ -13,14 +13,20 @@
 #include <p2switches.h>
 #include <shape.h>
 #include <abCircle.h>
+#include "buzzer.h"
 
 #define GREEN_LED BIT6
 
-static char score[2];
-int wait;
-int delay = 0;
+static char score[2];   /* array to keep track of the players scores */
 
-AbRect rect10 = {abRectGetBounds, abRectCheck, {15,5}}; // rectangle that will serve as a paddle
+/* variables to help manage the game */
+int wait;
+char reset;
+char hit;
+char gameOver;
+
+
+AbRect rect10 = {abRectGetBounds, abRectCheck, {15,2}};    /*rectangle that will serve as a paddle */
 
 AbRectOutline fieldOutline = {	/* playing field */
   abRectOutlineGetBounds, abRectOutlineCheck,   
@@ -74,7 +80,7 @@ typedef struct MovLayer_s {
 /* initial value of {0,0} will be overwritten */
 MovLayer ml2 = { &paddle1, {0,0}, 0 }; /**< not all layers move */
 MovLayer ml1 = { &paddle2, {0,0}, &ml2 }; 
-MovLayer ml0 = { &ballLayer, {2,1},  &ml1 }; 
+MovLayer ml0 = { &ballLayer, {2,2},  &ml1 }; 
 
 void movLayerDraw(MovLayer *movLayers, Layer *layers)
 {
@@ -155,6 +161,8 @@ void collCheck(MovLayer *ball, Region *p1, Region *p2) {
         (ballBoundary.botRight.axes[0] < p2->botRight.axes[0]))) {
     int velocity = ball->velocity.axes[1] = -ball->velocity.axes[1];
     newPos.axes[1] += (2*velocity);
+    
+    hit = 1;
     }
 }
 
@@ -169,11 +177,12 @@ void scoreCheck(MovLayer *ml, Region *fence) {      /* checks to see if a player
     
     if (shapeBoundary.topLeft.axes[1] < fence->topLeft.axes[1]) {
         changeScore(&score, 2);
-        delay = 1;
+        reset = 1;
     }
     
     if (shapeBoundary.botRight.axes[1] > fence->botRight.axes[1]) {
         changeScore(&score, 1);
+        reset = 1;
     }
 }
 
@@ -195,6 +204,9 @@ void resetBall(MovLayer *ml) {      /* resests the board after a player scores *
     newPos.axes[0] = (screenWidth/2);
     newPos.axes[1] = (screenHeight/2);
     ml->layer->posNext = newPos;
+    
+    for (int i=0; i < 10000; i++) {
+    }
 }
 
 /* functions to handle miving the paddles left and right */
@@ -221,8 +233,8 @@ u_int bgColor = COLOR_BLUE;     /**< The background color */
 int redrawScreen = 1;           /**< Boolean for whether screen needs to be redrawn */
 
 Region fieldFence;		/**< fence around playing field  */
-Region p1;
-Region p2;
+Region p1;              /* paddle 1 region */
+Region p2;              /* padde 2 region */
 
   
 
@@ -241,6 +253,7 @@ void main()
   lcd_init();
   shapeInit();
   p2sw_init(15);
+  // buzzer_init();
 
   shapeInit();
 
@@ -265,10 +278,29 @@ void main()
     movLayerDraw(&ml0, &ballLayer);
     layerGetBounds(&paddle1, &p1);
     layerGetBounds(&paddle2, &p2);
-    drawString5x7(5,0, "score: ", COLOR_GREEN, COLOR_BLACK);
-    drawString5x7(5,150, "score: ", COLOR_GREEN, COLOR_BLACK);
-    drawChar5x7(45,0, score[0], COLOR_GREEN, COLOR_BLACK);
-    drawChar5x7(45,150, score[1], COLOR_GREEN, COLOR_BLACK);
+    drawString5x7(5,0, "score: ", COLOR_GREEN, COLOR_BLUE);
+    drawString5x7(5,150, "score: ", COLOR_GREEN, COLOR_BLUE);
+    drawChar5x7(45,0, score[0], COLOR_GREEN, COLOR_BLUE);
+    drawChar5x7(45,150, score[1], COLOR_GREEN, COLOR_BLUE);
+    
+    if (score[0] == '4') {
+        drawString5x7(screenWidth/4, screenHeight/2, "Player 1 Wins", COLOR_GREEN, COLOR_BLUE);
+        break;
+    }
+    if (score[1] == '4') {
+        drawString5x7(screenWidth/4, screenHeight/2, "Player 2 Wins", COLOR_GREEN, COLOR_BLUE);
+        break;
+    }
+    if (reset) {
+        buzzer_init(3000);
+        resetBall(&ml0);
+        while(++wait < 10000){}       /* causes a short delay after a player scores */
+        wait = 0;
+        reset = 0;
+    }
+    if (hit) {
+        buzzer_init(1000);
+    }
   }
 }
 
@@ -280,22 +312,19 @@ void wdt_c_handler()
   count ++;
   if (count == 15) {
       
-      if (delay == 1) {
+      if (reset) {
           // resetBall(&ml0);
-          // layerDraw(&ballLayer);
-          while(++wait < 10000) {
-              // wait ++;
-          }
-          resetBall(&ml0);
-          while(++wait < 30000) {}
-          delay = 0;
-          wait = 0;
+          // reset = 0;
+      }
+      if (hit) {
+          hit = 0;
       }
       else {
         collCheck(&ml0, &p1, &p2);
         mlAdvance(&ml0, &fieldFence);
         scoreCheck(&ml0, &fieldFence);
         count = 0;
+        buzzer_init(0);
       }
   
   /* sets the switches and reads their input */
